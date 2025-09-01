@@ -132,7 +132,16 @@ export const uploadService = {
       throw new Error(`Upload session with ID ${id} not found`);
     }
     
-    uploadSessions[index].completedAt = new Date().toISOString();
+uploadSessions[index].completedAt = new Date().toISOString();
     return { ...uploadSessions[index] };
+  },
+
+  async getHistory() {
+    await delay(300);
+    // Return only completed uploads from the uploads array
+    const completedUploads = uploads.filter(upload => 
+      upload.status === "completed" && upload.uploadedAt
+    );
+    return completedUploads.map(upload => ({ ...upload }));
   }
 };

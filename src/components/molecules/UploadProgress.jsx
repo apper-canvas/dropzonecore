@@ -78,6 +78,23 @@ const UploadProgress = ({
             </Button>
           )}
           
+{file.status === "completed" && file.url && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = file.url;
+                link.download = file.name;
+                link.click();
+              }}
+              className="p-1 h-8 w-8"
+              title="Download file"
+            >
+              <ApperIcon name="Download" className="w-4 h-4" />
+            </Button>
+          )}
+          
           {(file.status === "completed" || file.status === "error") && onRemove && (
             <Button
               variant="ghost"

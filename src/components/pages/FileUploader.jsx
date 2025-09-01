@@ -4,20 +4,23 @@ import { toast } from "react-toastify";
 import DropZone from "@/components/organisms/DropZone";
 import FileList from "@/components/organisms/FileList";
 import UploadSummary from "@/components/organisms/UploadSummary";
+import HistoryPanel from "@/components/organisms/HistoryPanel";
 import { uploadService } from "@/services/api/uploadService";
-
 const FileUploader = () => {
-  const [files, setFiles] = useState([]);
+const [files, setFiles] = useState([]);
+  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Load initial data (uploaded files history)
-  useEffect(() => {
+useEffect(() => {
     loadFiles();
+    loadHistory();
   }, []);
 
-  const loadFiles = async () => {
+const loadFiles = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -28,6 +31,15 @@ const FileUploader = () => {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    try {
+      const historyData = await uploadService.getHistory();
+      setHistory(historyData);
+    } catch (err) {
+      console.error('Failed to load upload history:', err.message);
     }
   };
 
@@ -123,6 +135,24 @@ const FileUploader = () => {
     } catch (err) {
       toast.error(`Failed to remove file: ${err.message}`);
     }
+};
+
+  const handleReUpload = async (historyFile) => {
+    try {
+      // Create a new upload entry based on the history item
+      const newUpload = await uploadService.create({
+        name: historyFile.name,
+        size: historyFile.size,
+        type: historyFile.type,
+        status: "pending",
+        progress: 0
+      });
+      
+      setFiles(prevFiles => [...prevFiles, newUpload]);
+      toast.success(`${historyFile.name} added to upload queue`);
+    } catch (err) {
+      toast.error(`Failed to re-upload ${historyFile.name}: ${err.message}`);
+    }
   };
 
   const handleClearAll = () => {
@@ -152,17 +182,56 @@ const FileUploader = () => {
         </motion.div>
 
         {/* Drop Zone */}
-        <DropZone onFilesSelected={handleFilesSelected} />
+<DropZone onFilesSelected={handleFilesSelected} />
 
-        {/* File List */}
-        <FileList
-          files={files}
-          loading={loading}
-          error={error}
-          onCancel={handleCancelUpload}
-          onRemove={handleRemoveFile}
-          onRetry={handleRetry}
-        />
+        {/* History Toggle */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex justify-center"
+        >
+          <div className="flex bg-surface border border-gray-700 rounded-lg p-1">
+            <button
+              onClick={() => setShowHistory(false)}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                !showHistory
+                  ? 'bg-primary text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Upload Queue
+            </button>
+            <button
+              onClick={() => setShowHistory(true)}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                showHistory
+                  ? 'bg-primary text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Upload History
+            </button>
+          </div>
+        </motion.div>
+
+        {/* File List / History Panel */}
+        {!showHistory ? (
+          <FileList
+            files={files}
+            loading={loading}
+            error={error}
+            onCancel={handleCancelUpload}
+            onRemove={handleRemoveFile}
+            onRetry={handleRetry}
+            title="Upload Queue"
+          />
+        ) : (
+          <HistoryPanel
+            history={history}
+            loading={loading}
+            onReUpload={handleReUpload}
+          />
+        )}
 
         {/* Upload Summary */}
         <UploadSummary
